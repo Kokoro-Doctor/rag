@@ -6,7 +6,7 @@ from boto3.dynamodb.conditions import Key # <--- NEW
 from dotenv import load_dotenv
 from typing import TypedDict, Annotated, Sequence, Optional
 from langgraph.graph import StateGraph, END
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from rag import build_rag_chain
 from vector import get_vectorstores
 
@@ -14,11 +14,10 @@ from vector import get_vectorstores
 # SECURITY UPDATE: Load Key from .env file
 # ---------------------------------------------------------
 load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-if not OPENAI_API_KEY:
-    raise ValueError("❌ OPENAI_API_KEY nahi mili! Make sure .env file bani hai.")
-
+if not GROQ_API_KEY:
+    raise ValueError("❌ GROQ_API_KEY nahi mili!")
 # ------------------- 0. Logging & DB Setup -------------------
 logging.basicConfig(
     level=logging.INFO,
@@ -49,7 +48,17 @@ gyno_store = vectorstores["gyno"]
 logger.info("✅ Vector Stores Loaded.")
 
 # OpenAI Model
-model = ChatOpenAI(model="gpt-4o-mini", temperature=0.1, api_key=OPENAI_API_KEY)
+model = ChatGroq(
+    model="llama-3.1-8b-instant",      # Fast classifier for manager nodes
+    temperature=0.1,
+    api_key=GROQ_API_KEY
+)
+
+fallback_model = ChatGroq(
+    model="llama-3.3-70b-versatile",   # Smarter model for pt_llm / dr_llm nodes
+    temperature=0.1,
+    api_key=GROQ_API_KEY
+)
 
 # ------------------- 2. SYSTEM PROMPTS -------------------
 
@@ -272,7 +281,7 @@ def pt_gyno_node(state: AgentState):
 def pt_llm_node(state: AgentState):
     lang_instr = get_language_instruction(state)
     prompt = f"{lang_instr}\nSpeak like a helpful friend (Kokoro). Use the history if provided.\n\n{state['messages'][-1]}"
-    res = model.invoke(prompt).content
+    res = fallback_model.invoke(prompt).content
     return {"messages": [res]}
 
 def patient_router(state: AgentState):
@@ -322,7 +331,7 @@ def dr_gyno_node(state: AgentState):
 def dr_llm_node(state: AgentState):
     lang_instr = get_language_instruction(state)
     prompt = f"{lang_instr}\nMedical Professional Response.\n\n{state['messages'][-1]}"
-    res = model.invoke(prompt).content
+    res = fallback_model.invoke(prompt).content
     return {"messages": [res]}
 
 def doctor_router(state: AgentState):
