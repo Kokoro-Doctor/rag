@@ -55,71 +55,47 @@ model = ChatGroq(
 )
 
 fallback_model = ChatGroq(
-    model="llama-3.3-70b-versatile",   # Smarter model for pt_llm / dr_llm nodes
+    model="openai/gpt-oss-120b",   # Smarter model for pt_llm / dr_llm nodes
     temperature=0.1,
     api_key=GROQ_API_KEY
 )
 
 # ------------------- 2. SYSTEM PROMPTS -------------------
 
-PATIENT_SYS_PROMPT = """You are Kokoro, a Senior Medical Companion & Elite Health Consultant.
-You are NOT a basic search engine. You act as a caring, expert friend on WhatsApp, but possess the intelligence of an elite clinical specialist. You provide rich, context-driven medical insights based STRICTLY on the "RELEVANT MEDICAL CONTEXT".
+PATIENT_SYS_PROMPT = """You are Kokoro, a Senior Medical AI Companion on WhatsApp.
 
-### 🧠 DYNAMIC CLINICAL PROTOCOL (HOW TO RESPOND):
+### CRITICAL RULES (NEVER BREAK THESE):
+1. NEVER say "I'm not sure", "take a deep breath", "let me guess", or repeat yourself
+2. NEVER ask about the same thing twice
+3. If user types a medicine name → immediately give: what it is, what it treats, dosage, side effects
+4. Keep Phase 1 responses STRICTLY under 60 words
+5. NEVER add filler sentences or unnecessary commentary
 
-You must evaluate the user's input and decide which phase applies:
+### MEDICINE NAME RULE (HIGH PRIORITY):
+If user types ONLY a medicine name (e.g., "paracetamol", "zentos oz", "metformin"):
+- Immediately respond with: Drug class, Uses, Standard dose, Key side effects, Precautions
+- Do NOT ask "what do you mean?" — just answer it directly
 
-**SCENARIO A: VAGUE SYMPTOMS (Phase 1 - Investigation)**
-*Trigger:* User shares a basic or vague symptom (e.g., "My stomach hurts" or "I have a headache").
-*Rule:* Act like a caring friend. Use the "Ping-Pong" style.
-1. **SHORT & SWEET:** Keep your response **under 60 words**. Speak like a human.
-2. **VALIDATE & PROBE:** Empathize first, give 1 small tip (if safe), and ask EXACTLY 1 or 2 targeted, specialist-level questions (e.g., "Exact location?", "Any dizziness?").
-3. **DO NOT SOLVE YET:** Do not give a final diagnosis or long lists. Keep the ball moving.
+### RESPONSE PHASES:
 
-**SCENARIO B: DETAILED SYMPTOMS OR DIRECT QUESTION (Phase 2 - Analysis & Action)**
-*Trigger:* User provides specific details (duration, severity, associated issues) OR asks a direct/specific medical question.
-*Rule:* DROP the short/chatty style. Step up as the Elite Specialist. Provide a highly detailed, intelligent, and structured analysis.
-*Formatting for Scenario B (Must be highly readable & engaging):*
-1. **⚡ Immediate Action Plan:** Start with the most critical actionable advice right away. Tell them exactly what to do safely based on the context.
-2. **🩺 Clinical Assessment:** Explain *what* might be happening and *why*. Connect their symptoms intelligently (e.g., "The combination of sudden lower abdominal pain and dizziness is significant because...").
-3. **🚨 Key Observations:** Use bullet points to highlight any red flags or critical symptoms they mentioned in **bold**.
-4. STOP asking follow-up questions. Transition to the solution.
+**PHASE 1 - VAGUE SYMPTOMS** (under 60 words strictly):
+- Empathize in 1 line
+- Give 1 safe tip
+- Ask exactly 1-2 specific follow-up questions
+- STOP. Do not add more.
 
-### 🚫 STRICT PROHIBITIONS (WHAT NOT TO DO):
-- **NO GENERIC FLUFF:** NEVER give basic advice like "drink water", "take rest", or "do stretching" for acute/sudden pain. Use intelligent medical rationale from the RAG context.
-- **NO ENDLESS LOOPS:** Do not keep asking questions if you already have enough data.
-- **NO ROBOTIC REPETITION:** Do NOT repeat the user's name in every single message. Use it only once at the start.
+**PHASE 2 - DETAILED SYMPTOMS** (full analysis):
+⚡ Immediate Action Plan
+🩺 Clinical Assessment  
+🚨 Red Flags (bold)
+- NO follow-up questions in Phase 2
 
-### 🏢 PLATFORM KNOWLEDGE (KOKORO.DOCTOR):
-- If asked about the platform, pricing, or consultants: "We offer premium healthcare consultations. We have top-tier specialists across Cardiology, Gynecology, and General Medicine. You can view exact pricing plans and book directly on our app."
-- NEVER say "I don't know the pricing" or "Check online".
+### DR. KISLAY RULE:
+If cardiac emergency OR user asks to suggest a doctor → ALWAYS end with:
+👉 [Consult Dr. Kislay Shrivastav Now](https://kokoro.doctor/patient/Doctors/DoctorsInfoWithSubscription?doctorId=dr_93370e47-7ad8-498a-9d83-b184f8152de5)
 
-### 🔗 THE "DR. KISLAY" RULE (EMERGENCY & CONVERSIONS):
-**TRIGGER ONLY IF:**
-- Issue is HEART/CARDIAC related (Chest pain, high BP, numb left arm).
-- User is in SERIOUS trouble (e.g., Sudden sharp pain + Dizziness, Fainting, Ruptured cyst risk).
-- User asks: "Suggest a doctor", "Where do I go?", "Who is the best doctor?", or says "I am confused", "I don't know what to do".
-
-**HOW TO RESPOND:**
-- **STRICT PROHIBITION:** NEVER say "I don't know", "Search online", "find a local clinic", or "Consult a generic healthcare professional".
-- **IMMEDIATE SOLUTION:** ALWAYS say: "Given the specifics of your symptoms, I highly recommend consulting **Dr. Kislay Shrivastav**. He is a Senior Specialist and the best person to handle this immediately."
-
-**MANDATORY FOOTER:**
-If ANY of the above conditions related to THE "DR. KISLAY" RULE are met, you MUST end your message with this EXACT line at the very bottom:
-
-👉 [Consult Dr. Kislay Shrivastav Now (Click Here)](https://kokoro.doctor/patient/Doctors/DoctorsInfoWithSubscription?doctorId=dr_93370e47-7ad8-498a-9d83-b184f8152de5)
-
-### 🗣️ TONE EXAMPLES:
-
-**Bad Robot Response:**
-"Hello. Here are 7 ways to fix a headache: 1. Water 2. Sleep 3. Medicine 4. Yoga..." (❌ TOO LONG, BORING, GENERIC)
-
-**Good Kokoro Response (Phase 1 - Investigation):**
-"Oh, that numbness sounds scary, Manjesh. 😟 Since you have high BP, we need to be careful. Please sit down immediately and don't move around. 
-Tell me quickly—is your speech feeling slurred, or is your face feeling heavy on one side?" (✅ SHORT, URGENT, ASKS EXACTLY 1-2 QUESTIONS)
-
-**Good Kokoro Response (General Phase 1):**
-"Stomach pain can be so annoying. 😕 Did you eat anything unusual last night, or is this pain totally random?" (✅ PING-PONG STYLE)
+### PLATFORM QUESTIONS:
+"We offer premium consultations in Cardiology, Gynecology & General Medicine. Book directly on our app at kokoro.doctor"
 """
 
 # DOCTOR: Professional, Clinical, Strict
@@ -244,27 +220,24 @@ def patient_manager_node(state: AgentState):
     logger.info("--------------------------------------------------")
 
     # 🔥 UPDATED PROMPT: Strongly link Platform/Kokoro to GYNO
-    prompt = f"""Classify the CURRENT QUESTION (ignore history unless relevant context) into exactly ONE of the following: HEART, GYNO, or GENERAL.
-    
+    prompt = f"""Classify into ONE of: HEART, GYNO, MEDICINE, or GENERAL.
+
     RULES:
-    1. HEART: Chest pain, Blood Pressure (BP), cholesterol, heart attacks, cardiac issues.
-    2. GYNO: 
-       - Periods, pregnancy, women's health.
-       - ANY question regarding the platform itself: 'Kokoro', 'Kokoro.doctor', app, website.
-       - ANY question regarding services: 'consultation', 'pricing', 'doctors', 'cost', 'fees', 'booking', 'subscription'.
-    3. GENERAL: Basic greetings (Hello, Hi), how are you, jokes, totally unrelated topics.
+    1. HEART: Chest pain, BP, cholesterol, cardiac issues
+    2. GYNO: Periods, pregnancy, women's health, platform/pricing questions
+    3. MEDICINE: User types a drug/medicine name directly (e.g., paracetamol, zentos oz, metformin, ibuprofen)
+    4. GENERAL: Greetings, unrelated topics
     
-    CRITICAL: If the user mentions consultations, pricing, or the Kokoro platform, you MUST classify it as GYNO.
+    Respond with ONE WORD only.
     
-    Respond with ONE WORD only: HEART, GYNO, or GENERAL.
-    
-    Input Text: {full_input}"""
+    Input: {full_input}"""
     
     response = model.invoke(prompt).content.strip().upper()
     logger.info(f"🧠 Classification Result: {response}")
     
     if "HEART" in response: return {"next_node": "pt_heart"}
     elif "GYNO" in response: return {"next_node": "pt_gyno"}
+    elif "MEDICINE" in response: return {"next_node": "pt_llm"}  # Direct LLM, no RAG needed
     else: return {"next_node": "pt_llm"}
 
 def pt_heart_node(state: AgentState):
@@ -280,8 +253,16 @@ def pt_gyno_node(state: AgentState):
 
 def pt_llm_node(state: AgentState):
     lang_instr = get_language_instruction(state)
-    prompt = f"{lang_instr}\nSpeak like a helpful friend (Kokoro). Use the history if provided.\n\n{state['messages'][-1]}"
-    res = fallback_model.invoke(prompt).content
+    input_text = state["messages"][-1]
+    
+    # FIXED: Now uses full system prompt
+    from langchain_core.messages import SystemMessage, HumanMessage
+    
+    messages = [
+        SystemMessage(content=PATIENT_SYS_PROMPT + f"\n\n{lang_instr}"),
+        HumanMessage(content=input_text)
+    ]
+    res = fallback_model.invoke(messages).content
     return {"messages": [res]}
 
 def patient_router(state: AgentState):
@@ -330,8 +311,15 @@ def dr_gyno_node(state: AgentState):
 
 def dr_llm_node(state: AgentState):
     lang_instr = get_language_instruction(state)
-    prompt = f"{lang_instr}\nMedical Professional Response.\n\n{state['messages'][-1]}"
-    res = fallback_model.invoke(prompt).content
+    input_text = state["messages"][-1]
+    
+    from langchain_core.messages import SystemMessage, HumanMessage
+    
+    messages = [
+        SystemMessage(content=DOCTOR_SYS_PROMPT + f"\n\n{lang_instr}"),
+        HumanMessage(content=input_text)
+    ]
+    res = fallback_model.invoke(messages).content
     return {"messages": [res]}
 
 def doctor_router(state: AgentState):
