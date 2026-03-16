@@ -21,7 +21,7 @@ if not GROQ_API_KEY:
 def build_rag_chain(vectorstore, system_prompt):
     # 1. OpenAI Model Setup (Using GPT-4o)
     llm = ChatGroq(
-        model="llama-3.3-70b-versatile",  # Heavy RAG model
+        model="openai/gpt-oss-120b",  # Heavy RAG model
         temperature=0.1,
         api_key=GROQ_API_KEY
     )
